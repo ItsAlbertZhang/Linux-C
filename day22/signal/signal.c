@@ -6,7 +6,7 @@ void sigfunc(int signum) { //自定义一个函数, 用于信号重定向
 
 int main(int argc, char const *argv[]) {
     int ret = 0;
-    if (SIG_ERR == signal(SIGINT, sigfunc)) { //注册信号重定向至自定义的函数
+    if (SIG_ERR == signal(SIGINT, sigfunc)) { //注册信号重定向至自定义的函数. signal 函数失败时返回 SIG_ERR.
         printf("signal failed.\n");
         return -1;
     }
