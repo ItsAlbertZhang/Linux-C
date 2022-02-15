@@ -1,4 +1,5 @@
 #include <func.h>
+//通过在 tcp 通信中加入 select 多路复用机制来实现即时聊天
 
 int main(int argc, const char *argv[]) {
     int ret = 0;
@@ -32,16 +33,43 @@ int main(int argc, const char *argv[]) {
     ERROR_CHECK(ret, -1, "accept");
     printf("连接成功, 客户端 IP 地址为 %s, 端口为 %hu.\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
     //收发数据
-    //服务器接收数据
-    char recvbuf[1024] = {0};
-    ret = recv(new_fd, recvbuf, sizeof(recvbuf), 0);
-    ERROR_CHECK(ret, -1, "recv");
-    printf("接收到来自客户端的信息:\n%s\n", recvbuf);
-    //服务器发送数据
-    char sendbuf[1024] = "已收到你方发来数据.";
-    ret = send(new_fd, sendbuf, strlen(sendbuf), 0);
+    fd_set fd_set;  //定义一个 fd_set 集合
+    char buf[1024]; //定义一个缓冲区
+    while (1) {
+        FD_ZERO(&fd_set); //重置 fd_set
+        FD_SET(new_fd, &fd_set);
+        FD_SET(STDIN_FILENO, &fd_set);
+        select(new_fd + 1, &fd_set, NULL, NULL, NULL); //多路复用监听
+        if (FD_ISSET(new_fd, &fd_set)) {
+            //可以接收数据
+            bzero(buf, sizeof(buf));
+            ret = recv(new_fd, buf, sizeof(buf), 0); //从 new_fd 中接收数据
+            if (!ret) {
+                //返回异常
+                printf("对方断开了连接.\n");
+                break;
+            } else {
+                //返回正常
+                printf("对方:%s\n", buf);
+            }
+        }
+        if (FD_ISSET(STDIN_FILENO, &fd_set)) {
+            //可以发送数据
+            bzero(buf, sizeof(buf));
+            ret = read(STDIN_FILENO, buf, sizeof(buf)); //从标准输入缓冲区中读数据
+            if (!ret) {
+                //返回异常
+                printf("正在断开连接...\n");
+                break;
+            } else {
+                //返回正常
+                ret = send(new_fd, buf, strlen(buf) - 1, 0);
+            }
+        }
+    }
     //关闭连接
     close(new_fd);
     close(sockfd);
+    printf("已断开连接.\n");
     return 0;
 }

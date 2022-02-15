@@ -2,10 +2,10 @@
 
 int main(int argc, const char *argv[]) {
     int ret = 0;
-    printf("请输入服务器 IP 地址与端口号, 以空格隔开.\n");
-    char ipbuf[128] = {0};
-    uint16_t hostport = 0;
-    scanf("%s %hd", ipbuf, &hostport);
+    if (argc != 3) {
+        printf("./tcp_server ip port\n");
+        return -1;
+    }
     // 1.socket
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     ERROR_CHECK(ret, -1, "socket");
@@ -13,8 +13,8 @@ int main(int argc, const char *argv[]) {
     struct sockaddr_in server_addr;                                           //定义 sockaddr_in 结构体
     bzero(&server_addr, sizeof(server_addr));                                 //清空结构体初始化
     server_addr.sin_family = AF_INET;                                         //使用 IPv4 通信协议
-    server_addr.sin_port = htons(hostport);                                   //设置服务器端口
-    server_addr.sin_addr.s_addr = inet_addr(ipbuf);                           //设置服务器 IP
+    server_addr.sin_port = htons(atoi(argv[2]));                              //设置服务器端口
+    server_addr.sin_addr.s_addr = inet_addr(argv[1]);                         //设置服务器 IP
     ret = bind(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)); //绑定
     ERROR_CHECK(ret, -1, "bind");
     // 3.listen
