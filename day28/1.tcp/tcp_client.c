@@ -3,7 +3,7 @@
 int main(int argc, const char *argv[]) {
     int ret = 0;
     if (argc != 3) {
-        printf("./tcp_server ip port\n");
+        printf("./tcp_client ip port\n");
         return -1;
     }
     // 1.socket
