@@ -130,10 +130,10 @@ int broadcast_msg(struct user_node *user_ht, char *buf, int buflen, int recvfrom
         struct user_node *thisnode = user_ht + i;
         while (thisnode->next) {
             thisnode = thisnode->next;
-            // if (recvfromfd != thisnode->info->connect_fd) {
+            if (recvfromfd != thisnode->info->connect_fd) {
             ret = send(thisnode->info->connect_fd, buf, buflen, 0);
             ERROR_CHECK(ret, -1, "send");
-            // }
+            }
         }
     }
     return 0;

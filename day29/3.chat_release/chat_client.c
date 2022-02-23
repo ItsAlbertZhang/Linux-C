@@ -33,8 +33,8 @@ int socket_connect(const char *argv[]) {
 int ep_add_et(int epfd, int fd, int cmd) {
     int ret = 0;
     if (cmd) { //修改 fd 为非阻塞
-        int fcntlret = fcntl(fd, F_GETFL);
-        fcntl(fd, F_SETFL, fcntlret | O_NONBLOCK);
+        int flag = fcntl(fd, F_GETFL);
+        fcntl(fd, F_SETFL, flag | O_NONBLOCK);
     }
     struct epoll_event event;
     event.events = EPOLLIN | cmd; //监控 fd 可读性, 边缘触发
@@ -43,7 +43,30 @@ int ep_add_et(int epfd, int fd, int cmd) {
     return ret;
 }
 
-int recv_msg(int sockfd, char *buf, int buflen, int tempfd) {
+void print_input(const char *username, const int enter_protect) {
+    printf("\n\n\n\n\n\n\n\n\n\n");
+    printf("\033[10A");
+    fflush(stdout);
+    printf("\033[s%s    ", username);
+    if (enter_protect > 0) {
+        printf("你之前的键入可能已被新消息覆盖. 使用 Enter 以查看你的完整输入. p = %d", enter_protect);
+    } else if (enter_protect == 0) {
+        printf("使用 Enter 以发送消息.");
+    }
+    printf("\033[K\n    ");
+    fflush(stdout);
+    return;
+}
+
+void print_message(const char *buf) {
+    // printf("\033[u\033[K\n\033[K\n\033[K\n\033[K\n\033[K\n\033[K\n\033[K\n\033[K\n\033[K\n\033[K\n");
+    printf("\033[u%s\033[s", buf);
+
+    fflush(stdout);
+    return;
+}
+
+int recv_msg(int sockfd, char *buf, int buflen, const char *username, int *p_enter_protect) {
     int ret = 0;
     while (1) {
         bzero(buf, buflen);
@@ -52,99 +75,113 @@ int recv_msg(int sockfd, char *buf, int buflen, int tempfd) {
             break;
         } else if (0 == ret) { //对方断开连接
             return 1;
-        } else { //正常接收消息, 将消息读到临时文件中
-            ret = write(tempfd, buf, ret);
-            ERROR_CHECK(ret, -1, "write");
+        } else { //正常接收消息, 将接收到的消息打印
+            print_message(buf);
         }
+    }
+    print_input(username, *p_enter_protect);
+    return 0;
+}
+
+int handle_message(char *buf, int buflen, int *p_enter_protect, int sockfd, const char *username) {
+    *p_enter_protect += 1;
+    recv_msg(sockfd, buf, buflen, username, p_enter_protect);
+}
+
+int recover_input(char *buf, int buflen, int *inputcache_pipe, const char *username, int *p_enter_protect) {
+    // inputcache_pipe 成员: 0为管道0的读端, 1为管道0的写端, 2为管道1的读端, 3为管道1的写端
+    int ret = 0, ctrlD = 0;
+    printf("\033[u");
+    fflush(stdout);
+    int arg = -1;
+    if(*p_enter_protect) {
+        arg++;
+    }
+    print_input(username, arg);
+    while (1) {
+        bzero(buf, buflen);
+        ret = read(STDIN_FILENO, buf, buflen);
+        if (-1 == ret) {
+            break;
+        } else if (0 == ret) {
+            ctrlD = 1;
+        } else {
+            ret = write(inputcache_pipe[1], buf, ret);
+        }
+    }
+    while (1) {
+        bzero(buf, buflen);
+        ret = read(inputcache_pipe[0], buf, buflen);
+        if (ret == -1) {
+            break;
+        } else {
+            write(inputcache_pipe[3], buf, ret);
+        }
+    }
+    while (!ctrlD) {
+        bzero(buf, buflen);
+        ret = read(inputcache_pipe[2], buf, buflen);
+        if (ret == -1) {
+            break;
+        } else {
+            if (*p_enter_protect && buf[ret - 1] == '\n') {
+                ret--;
+            }
+            write(STDOUT_FILENO, buf, ret);
+            fflush(stdout);
+            if (!*p_enter_protect && buf[ret - 1] == '\n') {
+                ret--;
+            }
+            write(inputcache_pipe[1], buf, ret);
+        }
+    }
+    if (ctrlD) {
+        close(inputcache_pipe[2]);
     }
     return 0;
 }
 
-int send_msg(int sockfd, char *buf, int buflen, const char *argv[]) {
-    int ret = 0;
-    int sendusername = 1;
+int send_msg(char *buf, int buflen, int sockfd, int *inputcache_pipe, const char *username, int *p_enter_protect) {
+    int ret = 0, cnt = 1;
     while (1) {
         bzero(buf, buflen);
-        ret = read(STDIN_FILENO, buf, buflen);
+        ret = read(inputcache_pipe[0], buf, buflen);
         if (-1 == ret) { //读到结束
             break;
         } else if (0 == ret) { //试图断开连接
             return 1;
-        } else { //正常读取, 发送读取到的消息
-            if (sendusername) {
+        } else {
+            //发送读取到的消息
+            if (cnt) { //发送用户名
                 int ret = 0;
-                ret = send(sockfd, argv[3], strlen(argv[3]), 0);
+                ret = send(sockfd, username, strlen(username), 0);
                 ERROR_CHECK(ret, -1, "send");
-                ret = send(sockfd, "\n", 1, 0);
+                ret = send(sockfd, "\033[K\n    ", strlen("\033[K\n    "), 0);
                 ERROR_CHECK(ret, -1, "send");
-                sendusername = 0;
+                cnt = 0;
             }
             ret = send(sockfd, buf, ret, 0);
             ERROR_CHECK(ret, -1, "send");
         }
     }
+    if (cnt == 0) {
+        ret = send(sockfd, "\033[K\n", strlen("\033[K\n"), 0);
+        ERROR_CHECK(ret, -1, "send");
+    }
+    print_input(username, 0);
     return 0;
 }
 
-int tempfd_init(int *p_tempfd) {
+int handle_input(char *buf, int buflen, int *p_enter_protect, int *inputcache_pipe, int sockfd, const char *username) {
     int ret = 0;
-    int tempfd = open("./chat_client_temp", O_RDWR | O_CREAT | O_TRUNC, 0666);
-    char buf[] = "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"; // 20 个换行符
-    ret = write(tempfd, buf, strlen(buf));
-    ERROR_CHECK(ret, -1, "write");
-    *p_tempfd = tempfd;
-    return 0;
-}
-
-void print_from_currpos(int fd, off_t *p_currpos) {
-    lseek(fd, *p_currpos, SEEK_SET); //将文件光标偏移到该输出的位置
-    char buf[128] = {0};
-    int readret = 0;
-    while (readret = read(fd, buf, sizeof(buf))) {
-        write(STDOUT_FILENO, buf, readret);
-        bzero(buf, sizeof(buf));
+    if (*p_enter_protect) {
+        ret = recover_input(buf, buflen, inputcache_pipe, username, p_enter_protect);
+        *p_enter_protect = 0;
+    } else {
+        ret = recover_input(buf, buflen, inputcache_pipe, username, p_enter_protect);
+        ret = send_msg(buf, buflen, sockfd, inputcache_pipe, username, p_enter_protect);
     }
-    write(STDOUT_FILENO, "\n", 1);
-}
-
-void print_init(int fd, off_t *p_currpos) {
-    print_from_currpos(fd, p_currpos);
-    time_t now = time(NULL);
-    printf("%s", ctime(&now));
-}
-
-void print_flush(int fd, off_t *p_currpos) {
-    printf("\033[s"); //保存当前 shell 光标位置
-    fflush(stdout);
-    printf("\033[%dA\r", 2 * (MAX_MESSAGE + 1)); //将 shell 光标移动至对话框顶
-    fflush(stdout);
-    for(int i = 0; i < 2 * MAX_MESSAGE; i++) {
-        printf("\033[K\n");
-    }
-    printf("\033[%dA\r", 2 * MAX_MESSAGE);
-    fflush(stdout);
-    print_from_currpos(fd, p_currpos);
-    printf("\033[u"); //恢复 shell 光标位置
-    fflush(stdout);
-}
-
-int currposright2(int fd, off_t *p_currpos) {
-    int cnt = 2;
-    char buf = 0;
-    lseek(fd, *p_currpos, SEEK_SET);
-    while (cnt) {
-        read(fd, &buf, 1);
-        if (buf == '\n') {
-            cnt--;
-        }
-    }
-    *p_currpos = lseek(fd, 0, SEEK_CUR);
-    return 0;
-}
-
-void print_aftersend_flush(void) {
-    printf("\033[1A\r\033[K");
-    fflush(stdout);
+    return ret;
 }
 
 int main(int argc, const char *argv[]) {
@@ -154,15 +191,34 @@ int main(int argc, const char *argv[]) {
         printf("./chat_client ip port username\n");
         return -1;
     }
+    const char *username = argv[3];
 
     int sockfd = socket_connect(argv); //执行 socket, connect
     ERROR_CHECK(ret, -1, "socket_connect");
 
-    int tempfd = 0;
-    ret = tempfd_init(&tempfd); //创建一个用于存放聊天记录的临时文件
-    ERROR_CHECK(ret, -1, "tempfd_init");
-    off_t currpos = 0; //一开始的文件光标偏移量为 0
-    print_init(tempfd, &currpos);
+    // for(int i = 0; i < 1000; i++) {
+    //     printf("\n");
+    // }
+    // printf("\33[1000A");
+    // fflush(stdout);
+
+    // int tempfd = 0;
+    // ret = tempfd_init(&tempfd); //创建一个用于存放聊天记录的临时文件
+    // ERROR_CHECK(ret, -1, "tempfd_init");
+    // off_t currpos = 0; //一开始的文件光标偏移量为 0
+    // print_init(tempfd, &currpos);
+
+    int enter_protect = 0; //两步确认
+    print_input(username, 0);
+
+    int flag = 0;
+    int inputcache_pipe[2][2];
+    pipe(inputcache_pipe[0]);
+    flag = fcntl(inputcache_pipe[0][0], F_GETFL);
+    fcntl(inputcache_pipe[0][0], F_SETFL, flag | O_NONBLOCK);
+    pipe(inputcache_pipe[1]);
+    flag = fcntl(inputcache_pipe[1][0], F_GETFL);
+    fcntl(inputcache_pipe[1][0], F_SETFL, flag | O_NONBLOCK);
 
     int epfd = epoll_create(1);             //创建 epoll 句柄
     ret = ep_add_et(epfd, sockfd, EPOLLET); //在 epoll 中注册 sockfd
@@ -175,31 +231,28 @@ int main(int argc, const char *argv[]) {
     int ep_ready = 0; //满足条件的监听结果个数
 
     char buf[128];
-    int PROGRAM_RUNNING = 1;
+    int PROGRAM_RUNNING = 1; //程序运行标志
     while (PROGRAM_RUNNING) {
         ep_ready = epoll_wait(epfd, events, 2, -1);
         ERROR_CHECK(-1, ep_ready, "epoll_wait");
         for (int i = 0; i < ep_ready; i++) {
             if (events[i].data.fd == sockfd) { //有新消息
-                ret = recv_msg(sockfd, buf, sizeof(buf), tempfd);
+                ret = handle_message(buf, sizeof(buf), &enter_protect, sockfd, username);
                 ERROR_CHECK(ret, -1, "recv_msg");
                 if (1 == ret) { //对方断开了连接
                     PROGRAM_RUNNING = 0;
                     printf("对方断开了连接.\n");
                     break;
                 }
-                currposright2(tempfd, &currpos);
-                print_flush(tempfd, &currpos);
             }
-            if (events[i].data.fd == STDIN_FILENO) { //欲发送消息
-                ret = send_msg(sockfd, buf, sizeof(buf), argv);
+            if (events[i].data.fd == STDIN_FILENO) { //欲发送消息, 或欲刷新之前的输入
+                ret = handle_input(buf, sizeof(buf), &enter_protect, (int *)inputcache_pipe, sockfd, username);
                 ERROR_CHECK(ret, -1, "recv_msg");
                 if (1 == ret) { //试图断开连接
                     PROGRAM_RUNNING = 0;
                     printf("正在断开连接...\n");
                     break;
                 }
-                print_aftersend_flush();
             }
         }
     }
