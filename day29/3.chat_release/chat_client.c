@@ -1,6 +1,5 @@
 #include <func.h>
 //多人在线聊天室客户端
-//已知问题: 当一行的字数过多时, 会出现问题.
 //待实现功能: 时间每秒刷新
 
 #define MAX_MESSAGE 10
@@ -195,18 +194,6 @@ int main(int argc, const char *argv[]) {
 
     int sockfd = socket_connect(argv); //执行 socket, connect
     ERROR_CHECK(ret, -1, "socket_connect");
-
-    // for(int i = 0; i < 1000; i++) {
-    //     printf("\n");
-    // }
-    // printf("\33[1000A");
-    // fflush(stdout);
-
-    // int tempfd = 0;
-    // ret = tempfd_init(&tempfd); //创建一个用于存放聊天记录的临时文件
-    // ERROR_CHECK(ret, -1, "tempfd_init");
-    // off_t currpos = 0; //一开始的文件光标偏移量为 0
-    // print_init(tempfd, &currpos);
 
     int enter_protect = 0; //两步确认
     print_input(username, 0);
