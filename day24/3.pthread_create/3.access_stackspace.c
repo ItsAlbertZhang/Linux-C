@@ -13,7 +13,7 @@ int main(int argc, char const *argv[]) {
     //创建子线程
     pthread_t pthid;
     ret = pthread_create(&pthid, NULL, pthreadfunc, (void *)p);
-    THREAD_ERR_CHECK(ret, "pthread_create");
+    THREAD_ERROR_CHECK(ret, "pthread_create");
     sleep(1);                     //睡一下, 等子线程执行完毕.
     printf("main get = %s\n", p); //读取子线程改变后的值
     return 0;

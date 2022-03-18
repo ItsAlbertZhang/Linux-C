@@ -13,7 +13,7 @@ int main(int argc, const char *argv[]) {
     printf("gval = %d\n", gval); //打印 gval 的值
     pthread_t pthid;
     ret = pthread_create(&pthid, NULL, pthreadfunc, NULL); //创建一个子线程
-    THREAD_ERR_CHECK(ret, "pthread_create");
+    THREAD_ERROR_CHECK(ret, "pthread_create");
     usleep(1000);
     printf("gval = %d\n", gval); //打印 gval 的值
     return 0;

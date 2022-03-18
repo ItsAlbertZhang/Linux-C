@@ -6,18 +6,18 @@ int main(int argc, const char *argv[]) {
     pthread_mutexattr_t attr;
     bzero(&attr, sizeof(attr));          //定义一个锁属性
     ret = pthread_mutexattr_init(&attr); //初始化锁属性
-    THREAD_ERR_CHECK(ret, "pthread_mutexattr_init");
+    THREAD_ERROR_CHECK(ret, "pthread_mutexattr_init");
     ret = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE); //设置锁属性为检测锁
-    THREAD_ERR_CHECK(ret, "pthread_mutexattr_settype");
+    THREAD_ERROR_CHECK(ret, "pthread_mutexattr_settype");
     pthread_mutex_t mutex;
     bzero(&mutex, sizeof(mutex));            //定义一把锁
     ret = pthread_mutex_init(&mutex, &attr); //用 attr 锁属性初始化锁
-    THREAD_ERR_CHECK(ret, "pthread_mutex_init");
+    THREAD_ERROR_CHECK(ret, "pthread_mutex_init");
     ret = pthread_mutex_lock(&mutex); //加锁一次
-    THREAD_ERR_CHECK(ret, "pthread_mutex_lock");
+    THREAD_ERROR_CHECK(ret, "pthread_mutex_lock");
     printf("第一次加锁成功.\n");
     ret = pthread_mutex_lock(&mutex); //加锁两次
-    THREAD_ERR_CHECK(ret, "pthread_mutex_lock");
+    THREAD_ERROR_CHECK(ret, "pthread_mutex_lock");
     printf("第二次加锁成功.\n");
     return 0;
 }

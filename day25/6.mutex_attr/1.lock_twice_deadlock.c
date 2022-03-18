@@ -7,9 +7,9 @@ int main(int argc, const char *argv[]) {
     pthread_mutex_t mutex;
     bzero(&mutex, sizeof(mutex));
     pthread_mutex_init(&mutex, NULL); //初始化锁, 属性为 NULL
-    THREAD_ERR_CHECK(ret, "pthread_mutex_init");
+    THREAD_ERROR_CHECK(ret, "pthread_mutex_init");
     pthread_mutex_lock(&mutex); //上锁
-    THREAD_ERR_CHECK(ret, "pthread_mutex_lock");
+    THREAD_ERROR_CHECK(ret, "pthread_mutex_lock");
     pthread_mutex_lock(&mutex); //再次上锁, 造成死锁
     printf("here.\n");
     return 0;

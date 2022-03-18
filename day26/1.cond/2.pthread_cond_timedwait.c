@@ -31,7 +31,7 @@ int main(int argc, const char *argv[]) {
     pthread_mutex_init(&data->mutex, NULL);
     pthread_cond_init(&data->cond, NULL);
     ret = pthread_create(&pthid, NULL, pthreadfunc, (void *)data);
-    THREAD_ERR_CHECK(ret, "pthread_create");
+    THREAD_ERROR_CHECK(ret, "pthread_create");
     sleep(3);
     printf("主线程开始执行, 每3秒发送一次信号.\n");
     while (1) {

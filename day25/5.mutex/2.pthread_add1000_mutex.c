@@ -25,7 +25,7 @@ int main(int argc, const char *argv[]) {
     bzero(&data, sizeof(data));            //清空结构体
     pthread_mutex_init(&data.mutex, NULL); //初始化锁, 锁属性为 NULL
     ret = pthread_create(&pthid, NULL, pthreadfunc, (void *)&data);
-    THREAD_ERR_CHECK(ret, "pthread_create"); //创建子线程
+    THREAD_ERROR_CHECK(ret, "pthread_create"); //创建子线程
     //主线程进行自加操作
     for (int i = 0; i < NUM; i++) {
         pthread_mutex_lock(&data.mutex);   //上锁
