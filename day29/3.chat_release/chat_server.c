@@ -16,7 +16,7 @@ int socket_bind_listen(const char *argv[]) {
     int ret = 0;
 
     int sockfd = socket(AF_INET, SOCK_STREAM, 0); //执行 socket
-    ERROR_CHECK(ret, -1, "socket");
+    ERROR_CHECK(sockfd, -1, "socket");
 
     struct sockaddr_in server_addr = args_to_sockaddr(argv); //获取 bind 函数需要使用的 sockaddr_in 结构体
     int reuseaddr = 1;                                       //设置端口重用

@@ -2,6 +2,7 @@
 !*/
 !*.c
 !*.h
+!*.md
 !Makefile
 day15
 day16
