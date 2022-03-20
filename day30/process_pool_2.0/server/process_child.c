@@ -7,7 +7,7 @@ int recvfd(int pipefd, int *connect_fd) {
     struct msghdr msg; // 定义用于 recvmsg 的结构体
     bzero(&msg, sizeof(msg));
     // 操作 msg 结构体中的 void *msg_control 变长结构体成员, 该成员往往定义为 struct cmsghdr * 类型
-    int cmsg_length = CMSG_LENGTH((sizeof(int)));
+    int cmsg_length = CMSG_LEN((sizeof(int)));
     struct cmsghdr *cmsg = (struct cmsghdr *)malloc(cmsg_length);
     cmsg->cmsg_len = cmsg_length;
     cmsg->cmsg_level = SOL_SOCKET;
