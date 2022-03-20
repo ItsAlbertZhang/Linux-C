@@ -52,7 +52,13 @@ int main(int argc, const char *argv[]) {
     ret = connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)); // 连接服务器
     ERROR_CHECK(ret, -1, "connect");
 
-    usleep(100);
+    char buf[1024] = {0};
+    ret = recv(sockfd, buf, sizeof(buf), 0);
+    if(ret) {
+        printf("recv = %s\n", buf);
+    } else {
+        printf("对方断开了连接.\n");
+    }
 
     // 关闭连接
     close(sockfd);

@@ -73,9 +73,7 @@ int new_connect(int sockfd, struct process_data_t *p_process_ctl) {
     socklen_t addrlen = sizeof(p_process_ctl->addr);
     p_process_ctl->connect_fd = accept(sockfd, (struct sockaddr *)&p_process_ctl->addr, &addrlen); // 接受连接
     ERROR_CHECK(p_process_ctl->connect_fd, -1, "accept");
-    printf("%s has connected.\n", inet_ntoa(p_process_ctl->addr.sin_addr));
     p_process_ctl->isbusy = 1;
-    printf("process %d is busy.\n", p_process_ctl->pid);
     return 0;
 }
 
@@ -84,7 +82,7 @@ int close_connect(struct process_data_t *p_process_ctl) {
     bzero(&p_process_ctl->addr, sizeof(p_process_ctl->addr)); // 将子进程当前连接的用户信息清零
     p_process_ctl->connect_fd = -1;
     p_process_ctl->isbusy = 0;
-    printf("process %d is free.\n", p_process_ctl->pid);
+    printf("main: child %d works completed.\n", p_process_ctl->pid);
     return 0;
 }
 
@@ -93,6 +91,12 @@ int sendfd(struct process_data_t *p_process_ctl) {
 
     struct msghdr msg; // 定义用于 sendmsg 的结构体
     bzero(&msg, sizeof(msg));
+    // 操作 msg 结构体中的 iovec 结构体成员
+    struct iovec iov;
+    iov.iov_base = &p_process_ctl->addr;
+    iov.iov_len = sizeof(p_process_ctl->addr);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
     // 操作 msg 结构体中的 void *msg_control 变长结构体成员, 该成员往往定义为 struct cmsghdr * 类型
     int cmsg_length = CMSG_LEN((sizeof(int)));
     struct cmsghdr *cmsg = (struct cmsghdr *)malloc(cmsg_length);
@@ -106,8 +110,8 @@ int sendfd(struct process_data_t *p_process_ctl) {
 
     ret = sendmsg(p_process_ctl->pipefd, &msg, 0);
     ERROR_CHECK(ret, -1, "sendmsg");
-
-    // 在本实例中, 没有使用 iovec 结构体数组指针传递数据
+    
+    printf("main: %s has connected, child %d starts working.\n", inet_ntoa(p_process_ctl->addr.sin_addr), p_process_ctl->pid);
 
     free(cmsg);
     close(p_process_ctl->connect_fd);

@@ -12,11 +12,6 @@ int main(int argc, const char *argv[]) {
     ERROR_CHECK(ret, -1, "getconfig");
     fclose(configfile);
 
-    // 执行 socket, bind, listen
-    int sockfd = tcp_init(conf.ip, conf.port);
-    ERROR_CHECK(sockfd, -1, "tcp_init");
-    printf("socket fd = %d.\n", sockfd);
-
     // 创建子进程
     int child_process_num = atoi(conf.child_process_number);
     struct process_data_t *p_process_ctl = (struct process_data_t *)malloc(sizeof(struct process_data_t) * child_process_num);
@@ -33,8 +28,13 @@ int main(int argc, const char *argv[]) {
         ERROR_CHECK(ret, -1, "enqueue");
     }
 
+    // 执行 socket, bind, listen
+    int sockfd = tcp_init(conf.ip, conf.port);
+    ERROR_CHECK(sockfd, -1, "tcp_init");
+    printf("main: socket fd = %d.\n", sockfd);
+
     int epfd = epoll_create(1); // 创建 epoll 句柄
-    printf("epoll fd = %d.\n", epfd);
+    printf("main: epoll fd = %d.\n", epfd);
     ret = epoll_add(epfd, sockfd); // 将 sockfd 添加至 epoll 监听
     ERROR_CHECK(ret, -1, "epoll_add");
     for (int i = 0; i < child_process_num; i++) {
@@ -92,7 +92,9 @@ int child(const int pipe, const int id) {
         if (ret > 0) {
             ret = recvfd(pipe, &connect_fd);
             ERROR_CHECK(ret, -1, "recvfd");
-            printf("connect_fd = %d.\n", connect_fd);
+            sleep(3);
+            close(connect_fd);
+            write(pipe, &id, sizeof(id));
         }
     }
     return 0;
