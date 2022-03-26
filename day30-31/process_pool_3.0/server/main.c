@@ -92,7 +92,7 @@ int child(const int pipe, const int id) {
         if (ret > 0) {
             ret = recvfd(pipe, &connect_fd);
             ERROR_CHECK(ret, -1, "recvfd");
-            
+
             char filename[128] = {0};                              // 客户端请求文件名
             ret = recv(connect_fd, filename, sizeof(filename), 0); // 从客户端接收请求文件名
             ERROR_CHECK(ret, -1, "recv");
@@ -101,7 +101,8 @@ int child(const int pipe, const int id) {
             ret = transfile(connect_fd, filename);
             ERROR_CHECK(ret, -1, "transfile");
 
-            write(pipe, &id, sizeof(id));// 告知父进程当前任务已完成
+            close(connect_fd);
+            write(pipe, &id, sizeof(id)); // 告知父进程当前任务已完成
         }
     }
     return 0;

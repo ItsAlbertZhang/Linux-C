@@ -34,7 +34,7 @@ int recvfd(int pipefd, int *connect_fd) {
     return 0;
 }
 
-// 向客户端发送文件, 发送完成后关闭连接
+// 向客户端发送文件
 int transfile(int connect_fd, const char *filename) {
     int ret = 0;
 
@@ -42,23 +42,24 @@ int transfile(int connect_fd, const char *filename) {
     bzero(&tr, sizeof(tr));
     int filefd = open(filename, O_RDONLY);
     if (-1 == filefd) {
+        return -1; // 服务器不存在该文件
         tr.buflen = -1;
         ret = send(connect_fd, &tr, sizeof(tr.buflen), 0);
         ERROR_CHECK(ret, -1, "send");
-        close(connect_fd);
-    } else {
+    } else { // 服务器存在该文件
+        // 获取文件状态
         struct stat filestat;
         bzero(&filestat, sizeof(filestat));
-        ret = stat(filename, &filestat);// 获取文件状态
-        off_t restsize = filestat.st_size;
-        while(restsize > 0) {
+        ret = stat(filename, &filestat);
+        // 发送文件
+        off_t restsize = filestat.st_size; // 剩余未发送大小
+        while (restsize > 0) {
             restsize -= tr.buflen;
             tr.buflen = read(filefd, tr.buf, sizeof(tr.buf));
             ERROR_CHECK(tr.buflen, -1, "read");
             ret = send(connect_fd, &tr, sizeof(tr.buflen) + tr.buflen, 0);
             ERROR_CHECK(ret, -1, "send");
         }
-        close(connect_fd);
     }
     return 0;
 }
