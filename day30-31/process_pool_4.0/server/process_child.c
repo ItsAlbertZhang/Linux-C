@@ -56,9 +56,39 @@ int transfile(int connect_fd, const char *filename) {
             restsize -= tr.buflen;
             tr.buflen = read(filefd, tr.buf, sizeof(tr.buf));
             ERROR_CHECK(tr.buflen, -1, "read");
-            ret = send(connect_fd, &tr, sizeof(tr.buflen) + tr.buflen, 0);
+            ret = send_n(connect_fd, &tr, sizeof(tr.buflen) + tr.buflen, 0);
             ERROR_CHECK(ret, -1, "send");
         }
     }
+    return 0;
+}
+
+// 循环接收
+int recv_n(int sockfd, void *buf, size_t len, int flags) {
+    int ret = 0;
+
+    char *p = (char *)buf;
+    while(len > 0) {
+        ret = recv(sockfd, p, len, flags);
+        ERROR_CHECK(ret, -1, "recv");
+        p += ret;
+        len -= ret;
+    }
+    
+    return 0;
+}
+
+// 循环发送
+int send_n(int sockfd, const void *buf, size_t len, int flags) {
+    int ret = 0;
+
+    const char *p = (char *)buf;
+    while(len > 0) {
+        ret = send(sockfd, p, len, flags);
+        ERROR_CHECK(ret, -1, "send");
+        p += ret;
+        len -= ret;
+    }
+    
     return 0;
 }
