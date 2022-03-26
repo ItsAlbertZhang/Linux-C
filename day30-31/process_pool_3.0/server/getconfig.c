@@ -1,4 +1,4 @@
-#include "process_parent.h"
+#include "getconfig.h"
 
 int get_a_new_line(FILE *f, char *s, int len) {
     char *ret = NULL;
@@ -23,27 +23,5 @@ int getconfig(FILE *configfile, struct config_t *p_conf) {
     ret = get_a_new_line(configfile, p_conf->child_process_number, sizeof(p_conf->child_process_number));
     ERROR_CHECK(ret, -1, "get_a_new_line");
 
-    return 0;
-}
-
-int enqueue(struct queue_t *Q, int elem) {
-    if (Q->front == Q->rear && Q->tag != 0) {
-        return -1;
-    } else {
-        Q->p_q[Q->rear] = elem;
-        Q->rear = (Q->rear + 1) % Q->size;
-        Q->tag = 1;
-    }
-    return 0;
-}
-
-int dequeue(struct queue_t *Q, int *elem) {
-    if (Q->front == Q->rear && Q->tag == 0) {
-        return -1;
-    } else {
-        *elem = Q->p_q[Q->front];
-        Q->front = (Q->front + 1) % Q->size;
-        Q->tag = 0;
-    }
     return 0;
 }

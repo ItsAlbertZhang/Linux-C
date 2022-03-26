@@ -1,3 +1,6 @@
+#include "main.h"
+#include "getconfig.h"
+#include "queue.h"
 #include "process_child.h"
 #include "process_parent.h"
 
@@ -24,8 +27,8 @@ int main(int argc, const char *argv[]) {
     queue.size = child_process_num;
     queue.p_q = (int *)malloc(sizeof(int) * queue.size);
     for (int i = 0; i < child_process_num; i++) {
-        ret = enqueue(&queue, i); // 入队
-        ERROR_CHECK(ret, -1, "enqueue");
+        ret = queue_in(&queue, i); // 入队
+        ERROR_CHECK(ret, -1, "queue_in");
     }
 
     // 执行 socket, bind, listen
@@ -53,7 +56,7 @@ int main(int argc, const char *argv[]) {
         for (int i = 0; i < ep_ready; i++) {
             if (events[i].data.fd == sockfd) { // sockfd 可读, 有新用户注册
                 int process_ready = -1;
-                ret = dequeue(&queue, &process_ready); // 出队
+                ret = queue_out(&queue, &process_ready); // 出队
                 if (ret != -1) {
                     ret = new_connect(sockfd, p_process_ctl + process_ready); // 建立连接
                     ERROR_CHECK(ret, -1, "new_connect");
@@ -64,8 +67,8 @@ int main(int argc, const char *argv[]) {
                 int process_ready = -1;
                 ret = read(events[i].data.fd, &process_ready, sizeof(process_ready));
                 ERROR_CHECK(ret, -1, "read");
-                ret = enqueue(&queue, process_ready); // 入队
-                ERROR_CHECK(ret, -1, "enqueue");
+                ret = queue_in(&queue, process_ready); // 入队
+                ERROR_CHECK(ret, -1, "queue_in");
                 ret = close_connect(p_process_ctl + process_ready);
                 ERROR_CHECK(ret, -1, "close_connect");
             }

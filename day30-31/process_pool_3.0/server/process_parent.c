@@ -1,3 +1,4 @@
+#include "main.h"
 #include "process_parent.h"
 
 int tcp_init(const char *server_ip, const char *server_port) {
