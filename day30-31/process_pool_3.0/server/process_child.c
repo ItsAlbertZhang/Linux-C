@@ -41,9 +41,8 @@ int transfile(int connect_fd, const char *filename) {
     struct trans_t tr;
     bzero(&tr, sizeof(tr));
     int filefd = open(filename, O_RDONLY);
-    if (-1 == filefd) {
-        return -1; // 服务器不存在该文件
-        tr.buflen = -1;
+    if (-1 == filefd) { // 服务器不存在该文件
+        tr.buflen = -1; // 向客户端发送的第一个数据包中, 数据包的大小设置为 -1.
         ret = send(connect_fd, &tr, sizeof(tr.buflen), 0);
         ERROR_CHECK(ret, -1, "send");
     } else { // 服务器存在该文件
