@@ -52,6 +52,39 @@ int recv_n(int sockfd, void *buf, size_t len, int flags) {
     return 0;
 }
 
+int sigalrmflag = 0;
+
+void sigalrmfunc(int signum) { // 当接收到信号时, 将全局变量置 1.
+    sigalrmflag = 1;
+    return;
+}
+
+void print_progress_bar(int percent, int thousandpercent, int download_speed, int klevel) {
+    int x = percent >> 2;
+    int i = 0;
+    printf("\r");
+    printf("[");
+    for(; i < x; i++) {
+        printf("=");
+    }
+    for(; i < 25; i++) {
+        printf(" ");
+    }
+    printf("]");
+    printf("%3d.%1d%%  %4d ", percent, thousandpercent, download_speed);
+    if (klevel == 1) {
+        printf("K");
+    } else if (klevel == 2) {
+        printf("M");
+    } else if (klevel == 3) {
+        printf("G");
+    } else if (klevel == 4) {
+        printf("T");
+    }
+    printf("B/s");
+    fflush(stdout);
+}
+
 int main(int argc, const char *argv[]) {
     int ret = 0;
 
@@ -96,14 +129,37 @@ int main(int argc, const char *argv[]) {
         ERROR_CHECK(ret, -1, "unlink");
         printf("No such file exists on the server.\n");
     } else { //服务器上存在该文件
+
+        // 进度显示功能--下载进度
+        off_t persize = filesize / 1000; // 文件大小的千分之一为一份 (即 0.1%)
+        if (!persize) {
+            persize = 1; // 文件过小时 (小于 1KB), 以 1 字节为 0.1%
+        }
+        off_t nowsize = 0;       // 当前份的文件大小, 当其超过文件大小的千分之一时进行进位
+        int percent = 0;         // 当前百分比, 其应小于 100
+        int thousandpercent = 0; // 当前千分比, 其应小于 10, 当其等于 10 时进行进位
+        // 进度显示功能--下载速度
+        signal(SIGALRM, sigalrmfunc);                   //将 SIGALRM 信号重定向至 sigalrmfunc 函数. 该信号是真实计时器发出的信号
+        struct itimerval persecond = {{1, 0}, {1, 0}};  //定义一个计时器时间设置, 间隔时间为 1 秒
+        ret = setitimer(ITIMER_REAL, &persecond, NULL); //设定计时器
+        ERROR_CHECK(ret, -1, "setitimer");
+        off_t lastsecondrecvsize = 0; // 上一秒接收的文件大小
+        extern int sigalrmflag;       // 计时器的脉冲信号会触发 SIGALRM 信号, 该信号被重定向至 sigalrmfunc 函数, 该函数内会将该全局变量置 1
+        int klevel = 0;               // 实际文件大小为显示大小 download_speed 的 1024 的 klevel 次方字节
+        off_t download_speed = 0;     // 显示大小 download_speed
+        // 进度显示功能--总速度
+        struct timeval starttime;
+        bzero(&starttime, sizeof(starttime));
+        ret = gettimeofday(&starttime, NULL);
+        ERROR_CHECK(ret, -1, "gettimeofday");
         while (1) {
             // 先接收结构体的头部
+            tr.buflen = 0;
             ret = recv(connect_fd, &tr.buflen, sizeof(tr.buflen), 0);
             ERROR_CHECK(ret, -1, "recv");
             if (0 == tr.buflen) {
                 // 服务器发送完毕, 接收的结构体头部为 0
                 close(filefd);
-                printf("Received successfully!\n");
                 break;
             } else {
                 // 正常接收文件, 接收的结构体头部为接收内容大小
@@ -111,9 +167,46 @@ int main(int argc, const char *argv[]) {
                 ERROR_CHECK(ret, -1, "recv");
                 ret = write(filefd, tr.buf, tr.buflen); // 写入文件
                 ERROR_CHECK(ret, -1, "write");
-                tr.buflen = 0;
+                // 进度显示功能--下载进度
+                nowsize += tr.buflen;
+                while (nowsize >= persize) {
+                    thousandpercent++;
+                    if (thousandpercent >= 10) {
+                        percent++;
+                        thousandpercent -= 10;
+                    }
+                    nowsize -= persize;
+                }
+                // 进度显示功能--下载速度
+                lastsecondrecvsize += tr.buflen;
+                if (sigalrmflag) { // 距离上次刷新下载速度已经过去 1 秒
+                    klevel = -1;
+                    do {
+                        klevel++;
+                        download_speed = lastsecondrecvsize;
+                        lastsecondrecvsize >>= 10;
+                    } while (lastsecondrecvsize);
+                    sigalrmflag = 0;
+                }
+                print_progress_bar(percent, thousandpercent, download_speed, klevel);
             }
         }
+        // 进度显示功能--总速度
+        struct timeval endtime;
+        bzero(&endtime, sizeof(endtime));
+        ret = gettimeofday(&endtime, NULL);
+        ERROR_CHECK(ret, -1, "gettimeofday");
+        off_t download_speed_byte = filesize;
+        download_speed_byte *= 1000000;
+        download_speed_byte = download_speed_byte / ((endtime.tv_sec - starttime.tv_sec) * 1000000 + (endtime.tv_usec - starttime.tv_usec));
+        klevel = -1;
+        do {
+            klevel++;
+            download_speed = download_speed_byte;
+            download_speed_byte >>= 10;
+        } while (download_speed_byte);
+        print_progress_bar(percent, thousandpercent, download_speed, klevel);
+        printf("\n");
     }
 
     // 关闭连接
