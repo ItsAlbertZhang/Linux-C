@@ -60,28 +60,25 @@ void sigalrmfunc(int signum) { // 当接收到信号时, 将全局变量置 1.
 }
 
 void print_progress_bar(int percent, int thousandpercent, int download_speed, int klevel) {
-    int x = percent >> 2;
+    int x = percent / 5;
     int i = 0;
-    printf("\r");
-    printf("[");
-    for(; i < x; i++) {
+    printf("\r[");
+    for (; i < x; i++) {
         printf("=");
     }
-    for(; i < 25; i++) {
-        printf(" ");
-    }
-    printf("]");
-    printf("%3d.%1d%%  %4d ", percent, thousandpercent, download_speed);
-    if (klevel == 1) {
-        printf("K");
+    printf("%*s]%3d.%1d%%     %4d ", 20 - i, "", percent, thousandpercent, download_speed);
+    if (klevel == 0) {
+        printf("B/s");
+    } else if (klevel == 1) {
+        printf("KB/s");
     } else if (klevel == 2) {
-        printf("M");
+        printf("MB/s");
     } else if (klevel == 3) {
-        printf("G");
+        printf("GB/s");
     } else if (klevel == 4) {
-        printf("T");
+        printf("TB/s");
     }
-    printf("B/s");
+
     fflush(stdout);
 }
 
@@ -120,8 +117,8 @@ int main(int argc, const char *argv[]) {
 
     // 接收文件大小
     off_t filesize = 0;
-    ret = recv(connect_fd, &filesize, sizeof(filesize), 0);
-    ERROR_CHECK(ret, -1, "recv");
+    ret = recv_n(connect_fd, &filesize, sizeof(filesize), 0);
+    ERROR_CHECK(ret, -1, "recv_n");
 
     if (0 == filesize) { // 服务器上没有该文件, 接收的文件大小为 0
         close(filefd);
@@ -155,8 +152,8 @@ int main(int argc, const char *argv[]) {
         while (1) {
             // 先接收结构体的头部
             tr.buflen = 0;
-            ret = recv(connect_fd, &tr.buflen, sizeof(tr.buflen), 0);
-            ERROR_CHECK(ret, -1, "recv");
+            ret = recv_n(connect_fd, &tr.buflen, sizeof(tr.buflen), 0);
+            ERROR_CHECK(ret, -1, "recv_n");
             if (0 == tr.buflen) {
                 // 服务器发送完毕, 接收的结构体头部为 0
                 close(filefd);
@@ -185,7 +182,7 @@ int main(int argc, const char *argv[]) {
                         klevel++;
                         download_speed = lastsecondrecvsize;
                         lastsecondrecvsize >>= 10;
-                    } while (lastsecondrecvsize);
+                    } while (download_speed > 10000);
                     sigalrmflag = 0;
                 }
                 print_progress_bar(percent, thousandpercent, download_speed, klevel);
@@ -204,8 +201,8 @@ int main(int argc, const char *argv[]) {
             klevel++;
             download_speed = download_speed_byte;
             download_speed_byte >>= 10;
-        } while (download_speed_byte);
-        print_progress_bar(percent, thousandpercent, download_speed, klevel);
+        } while (download_speed > 10000);
+        print_progress_bar(100, 0, download_speed, klevel);
         printf("\n");
     }
 
