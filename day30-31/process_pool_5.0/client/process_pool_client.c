@@ -42,7 +42,7 @@ int recv_n(int sockfd, void *buf, size_t len, int flags) {
     int ret = 0;
 
     char *p = (char *)buf;
-    while(len > 0) {
+    while (len > 0) {
         ret = recv(sockfd, p, len, flags);
         ERROR_CHECK(ret, -1, "recv");
         p += ret;
@@ -80,27 +80,39 @@ int main(int argc, const char *argv[]) {
     int filefd = open(conf.filename, O_CREAT | O_TRUNC | O_RDWR, 0666);
     ERROR_CHECK(filefd, -1, "open");
     printf("filefd = %d\n", filefd);
+
+    // 发送想要下载的文件的名称
     ret = send(connect_fd, conf.filename, strlen(conf.filename), 0);
     ERROR_CHECK(ret, -1, "send");
-    while (1) {
-        ret = recv(connect_fd, &tr.buflen, sizeof(tr.buflen), 0); // 先接收结构体的头部
-        ERROR_CHECK(ret, -1, "recv");
-        if (-1 == tr.buflen) { // 服务器上没有该文件, 接收的结构体头部为 -1
-            close(filefd);
-            ret = unlink(conf.filename);
-            ERROR_CHECK(ret, -1, "unlink");
-            printf("No such file exists on the server.\n");
-            break;
-        } else if (0 == tr.buflen) { // 服务器发送完毕, 接收的结构体头部为 0
-            close(filefd);
-            printf("Received successfully!\n");
-            break;
-        } else { // 正常接收文件, 接收的结构体头部为接收内容大小
-            ret = recv_n(connect_fd, &tr.buf, tr.buflen, 0); // 接收结构体的主体部分
+
+    // 接收文件大小
+    off_t filesize = 0;
+    ret = recv(connect_fd, &filesize, sizeof(filesize), 0);
+    ERROR_CHECK(ret, -1, "recv");
+
+    if (0 == filesize) { // 服务器上没有该文件, 接收的文件大小为 0
+        close(filefd);
+        ret = unlink(conf.filename);
+        ERROR_CHECK(ret, -1, "unlink");
+        printf("No such file exists on the server.\n");
+    } else { //服务器上存在该文件
+        while (1) {
+            // 先接收结构体的头部
+            ret = recv(connect_fd, &tr.buflen, sizeof(tr.buflen), 0);
             ERROR_CHECK(ret, -1, "recv");
-            ret = write(filefd, tr.buf, tr.buflen); // 写入文件
-            ERROR_CHECK(ret, -1, "write");
-            tr.buflen = 0;
+            if (0 == tr.buflen) {
+                // 服务器发送完毕, 接收的结构体头部为 0
+                close(filefd);
+                printf("Received successfully!\n");
+                break;
+            } else {
+                // 正常接收文件, 接收的结构体头部为接收内容大小
+                ret = recv_n(connect_fd, &tr.buf, tr.buflen, 0); // 接收结构体的主体部分
+                ERROR_CHECK(ret, -1, "recv");
+                ret = write(filefd, tr.buf, tr.buflen); // 写入文件
+                ERROR_CHECK(ret, -1, "write");
+                tr.buflen = 0;
+            }
         }
     }
 
