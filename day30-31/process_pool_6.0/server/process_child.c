@@ -76,7 +76,7 @@ int transfile(int connect_fd, const char *filename) {
 
     struct trans_t tr;
     bzero(&tr, sizeof(tr));
-    off_t filesize = 0;
+    size_t filesize = 0;
     int filefd = open(filename, O_RDONLY);
     // 发送文件大小 (为 0 表示不存在该文件)
     if (-1 == filefd) { // 服务器不存在该文件
@@ -93,34 +93,12 @@ int transfile(int connect_fd, const char *filename) {
     ERROR_CHECK(ret, -1, "send");
     // 发送文件
     if (filesize) {
-        off_t restsize = filesize; // 剩余未发送大小
-        while (restsize > 0) {
-            restsize -= tr.buflen;
-            tr.buflen = read(filefd, tr.buf, sizeof(tr.buf));
-            ERROR_CHECK(tr.buflen, -1, "read");
-            ret = send_n(connect_fd, &tr, sizeof(tr.buflen) + tr.buflen, 0);
-            ERROR_CHECK(ret, -1, "send_n");
-        }
+        char *filebuf = (char *)mmap(NULL, filesize, PROT_READ, MAP_SHARED, filefd, 0);
+        ret = send_n(connect_fd, filebuf, filesize, 0);
+        ERROR_CHECK(ret, -1, "send_n");
+        munmap(filebuf, filesize);
+        close(filefd);
     }
-    // if (-1 == filefd) { // 服务器不存在该文件
-    //     tr.buflen = -1; // 向客户端发送的第一个数据包中, 数据包的大小设置为 -1.
-    //     ret = send(connect_fd, &tr, sizeof(tr.buflen), 0);
-    //     ERROR_CHECK(ret, -1, "send");
-    // } else { // 服务器存在该文件
-    //     // 获取文件状态
-    //     struct stat filestat;
-    //     bzero(&filestat, sizeof(filestat));
-    //     ret = stat(filename, &filestat);
-    //     // 发送文件
-    //     off_t restsize = filestat.st_size; // 剩余未发送大小
-    //     while (restsize > 0) {
-    //         restsize -= tr.buflen;
-    //         tr.buflen = read(filefd, tr.buf, sizeof(tr.buf));
-    //         ERROR_CHECK(tr.buflen, -1, "read");
-    //         ret = send_n(connect_fd, &tr, sizeof(tr.buflen) + tr.buflen, 0);
-    //         ERROR_CHECK(ret, -1, "send_n");
-    //     }
-    // }
     return 0;
 }
 

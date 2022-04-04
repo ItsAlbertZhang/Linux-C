@@ -4,7 +4,7 @@
 #include <func.h>
 
 struct trans_t {
-    off_t buflen;
+    size_t buflen;
     char buf[1024];
 };
 
