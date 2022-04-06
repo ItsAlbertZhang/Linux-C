@@ -19,7 +19,7 @@ void *child_handle(void *args) {
             // 出队成功, 拿到传输的对端所连接的 socket 文件描述符
             // 首先执行解锁操作
             pthread_mutex_unlock(&p_pthread_data->public_data->mutex);
-            printf("子线程 %ld 已唤醒, 开始执行任务.\n", p_pthread_data->pthid);
+            printf("\n子线程 %ld 已唤醒, 开始执行任务.\n", p_pthread_data->pthid);
             // 执行文件传输
             ret = send_file(connect_fd);
             if (-1 == ret) {
@@ -28,7 +28,7 @@ void *child_handle(void *args) {
             }
             close(connect_fd);
             connect_fd = -1;
-            printf("子线程 %ld 任务已完成.\n", p_pthread_data->pthid);
+            printf("\n子线程 %ld 任务已完成.\n", p_pthread_data->pthid);
             //上锁, 并继续循环尝试出队.
             pthread_mutex_lock(&p_pthread_data->public_data->mutex);
         }

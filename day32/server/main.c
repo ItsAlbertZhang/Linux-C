@@ -50,13 +50,13 @@ int accept_enqueue(int sockfd, struct queue_t *Q) {
     socklen_t addrlen = sizeof(client_addr);
     connect_fd = accept(sockfd, (struct sockaddr *)&client_addr, &addrlen); // 于此处阻塞
     ERROR_CHECK(ret, -1, "accept");
-    printf("已与 %s 建立连接.\n", inet_ntoa(client_addr.sin_addr));
+    printf("\n已与 %s 建立连接.\n", inet_ntoa(client_addr.sin_addr));
 
     // enqueue
     ret = queue_in(Q, connect_fd);
 
     if (-1 == ret) {
-        printf("服务器过于繁忙, 无法处理更多请求, 已主动断开该连接.\n");
+        printf("\n服务器过于繁忙, 无法处理更多请求, 已主动断开该连接.\n");
         close(connect_fd);
         connect_fd = -1;
     }

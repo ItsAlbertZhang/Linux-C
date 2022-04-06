@@ -19,5 +19,8 @@ int main(int argc, char const *argv[]) {
     // 断开连接
     close(connect_fd);
 
+    printf("任务完成, 程序将在 1 秒后退出...\n");
+    sleep(1);
+
     return 0;
 }

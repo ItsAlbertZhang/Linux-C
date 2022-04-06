@@ -37,9 +37,10 @@ int progress_bar_destroy(struct progress_bar_t *progress_bar) {
     struct timeval end_time;
     ret = gettimeofday(&end_time, NULL);
 
-    progress_bar->speed.download_speed = progress_bar->percent.total_size * 10000 / ((progress_bar->speed.start_time.tv_sec - end_time.tv_sec) * 10000 + (progress_bar->speed.start_time.tv_usec - end_time.tv_usec));
+    progress_bar->speed.download_speed = progress_bar->percent.total_size * 1000000 / ((end_time.tv_sec - progress_bar->speed.start_time.tv_sec) * 1000000 + (end_time.tv_usec - progress_bar->speed.start_time.tv_usec));
+    progress_bar->speed.flush_bool = 1;
     print_progress_bar(progress_bar);
-    printf("\n");
+    printf(" (平均速度)\n");
 
     ret = pthread_cancel(progress_bar->speed.pthid); // 销毁计时器线程
     THREAD_ERROR_CHECK(ret, "pthread_cancel");

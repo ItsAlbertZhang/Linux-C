@@ -25,7 +25,6 @@ char *read_config_file(char *config_file_name) {
 
     int i = 0;
     while (i < MAX_CONFIG_SETTINGS && !ret) {
-        printf("i = %d, conf[i] = %p\n", i, conf + i * MAX_CONFIG_LENGTH);
         ret = get_a_new_line(config_file, conf + i * MAX_CONFIG_LENGTH);
         i++;
     }
