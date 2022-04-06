@@ -1,6 +1,7 @@
 #ifndef __HEAD_H__
 #define __HEAD_H__
 
+#define _GNU_SOURCE
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <errno.h>
@@ -60,6 +61,12 @@
             perror(func_name);                                \
             return -1;                                        \
         }                                                     \
+    }
+#define RETURN_ZERO_CHECK(ret, retval) \
+    {                                  \
+        if (ret == retval) {           \
+            return 0;                  \
+        }                              \
     }
 
 #endif

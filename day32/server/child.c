@@ -1,4 +1,5 @@
 #include "pthread_pool.h"
+#include "send_file.h"
 
 void *child_handle(void *args) {
     struct pthread_data_t *p_pthread_data = (struct pthread_data_t *)args;
@@ -20,8 +21,11 @@ void *child_handle(void *args) {
             pthread_mutex_unlock(&p_pthread_data->public_data->mutex);
             printf("子线程 %ld 已唤醒, 开始执行任务.\n", p_pthread_data->pthid);
             // 执行文件传输
-            // transcode
-            sleep(10);
+            ret = send_file(connect_fd);
+            if (-1 == ret) {
+                printf("send_file failed.\n");
+                return NULL;
+            }
             close(connect_fd);
             connect_fd = -1;
             printf("子线程 %ld 任务已完成.\n", p_pthread_data->pthid);
