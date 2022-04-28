@@ -48,11 +48,13 @@ int main(int argc, const char *argv[]) {
     MYSQL *conn;
     MYSQL_RES *res;
     MYSQL_ROW row;
-    conn = mysql_init(NULL);
+    conn = mysql_init(NULL); // 初始化连接描述符
+    // 连接 MySQL 数据库
     if (!mysql_real_connect(conn, conf.server, conf.user, conf.password, conf.database, 0, NULL, 0)) {
         printf("[ERROR] %s:%d 连接 MySQL 数据库时发生错误: %s\n", __FILE__, __LINE__, mysql_error(conn));
         return -1;
     } else {
+        // 成功连接, 执行查询或操作
         printf("[INFO] 成功连接到 MySQL 数据库.\n");
         char query[300];
         ssize_t querylen = 0;
@@ -60,26 +62,30 @@ int main(int argc, const char *argv[]) {
         char nodata = 1;
         while (1) {
             querylen = read(STDIN_FILENO, query, sizeof(query));
-            query[querylen - 1] = 0;
+            query[querylen - 1] = 0; // 从标准输入读取查询语句 (也可在源码中预设好语句, 并使用 sprint 进行字符串拼接)
             if (!strcmp(query, "exit")) {
-                break;
+                break;// 退出机制
             } else {
-                printf("%s\n", query);
+                printf("%s\n", query);// 将查询语句输出, 方便定位问题.
                 query_ret = mysql_query(conn, query);
                 if (query_ret) {
+                    // 语法错误. 如果查询结果为空, 则不会进入此情形.
                     printf("[ERROR] %s:%d MySQL 语法错误: %s\n", __FILE__, __LINE__, mysql_error(conn));
                 } else {
                     // // DQL 数据查询语句, 显示查询结果.
-                    // res = mysql_use_result(conn);
+                    // res = mysql_use_result(conn); // 接取查询结果
                     // if (res) {
                     //     while ((row = mysql_fetch_row(res)) != NULL) {
+                    //         // 按行循环提取查询结果. 如果查询结果为空则不会进入循环.
                     //         nodata = 0;
                     //         for (int i = 0; i < mysql_num_fields(res); i++) {
+                    //             // 将一行查询结果, 按字段进行循环输出.
                     //             printf("%10s ", row[i]);
                     //         }
-                    //         printf("\n");
+                    //         printf("\n"); // 每输出完毕一行, 输出一个换行符.
                     //     }
                     //     if (nodata) {
+                    //         // 如果为进入行循环, 则代表数据为空, 此时不会有任何输出. 为了易读性, 此时进行输出告知未找到数据.
                     //         printf("[INFO] 没有找到数据.\n");
                     //     } else {
                     //         nodata = 1;
