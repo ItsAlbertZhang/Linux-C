@@ -56,7 +56,7 @@ int rsa_encrypt(const unsigned char *plaintext, unsigned char *ciphertext, const
 int main(int argc, char *argv[]) {
     unsigned char *plaintext = (unsigned char *)"风带来故事的种子, 时间使之发芽.";
     unsigned char ciphertext[1024] = {0};
-    int rsa_len = rsa_encrypt(plaintext, ciphertext, "private.pem", 0);
+    int rsa_len = rsa_encrypt(plaintext, ciphertext, "public.pem", 1);
     int fd = open("ciphertext", O_RDWR | O_CREAT | O_TRUNC, 0666);
     ftruncate(fd, rsa_len);
     write(fd, ciphertext, rsa_len);

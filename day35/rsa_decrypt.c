@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     unsigned char plaintext[1024] = {0};
     int fd = open("ciphertext", O_RDWR, 0666);
     int ret = read(fd, ciphertext, sizeof(ciphertext));
-    int len = rsa_decrypt(plaintext, ciphertext, "public.pem", 1);
+    int len = rsa_decrypt(plaintext, ciphertext, "private.pem", 0);
     printf("%s\n", plaintext);
     return 0;
 }
